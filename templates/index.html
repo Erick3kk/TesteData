@@ -6,11 +6,9 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-
 <div class="card">
     <div class="header">
         <h1>Eco-Awareness <span>2026</span></h1>
-        <p class="subtitle">Gestão de Créditos Individuais</p>
     </div>
 
     <div class="input-group">
@@ -18,17 +16,12 @@
         <input type="number" id="eventoId" value="1">
     </div>
 
-    <button class="btn-primary" id="btnProcessar" onclick="distribuir()">Processar para este ID</button>
-
+    <button class="btn-primary" id="btnRun" onclick="distribuir()">Processar para este ID</button>
     <div class="divider"></div>
 
     <table>
         <thead>
-            <tr>
-                <th>REF</th>
-                <th>Nome</th>
-                <th style="text-align:right">Saldo</th>
-            </tr>
+            <tr><th>REF</th><th>Nome</th><th style="text-align:right">Saldo</th></tr>
         </thead>
         <tbody id="tabela-usuarios"></tbody>
     </table>
@@ -44,44 +37,43 @@
                 <tr>
                     <td>#${u.id}</td>
                     <td>${u.nome}</td>
-                    <td style="text-align:right; color:var(--primary); font-weight:bold;">R$ ${u.saldo}</td>
+                    <td style="text-align:right; color:var(--primary)">R$ ${u.saldo}</td>
                 </tr>
             `).join('');
         });
     }
 
     function distribuir() {
-        const id = document.getElementById('eventoId').value;
-        const btn = document.getElementById('btnProcessar');
+        const idInput = document.getElementById('eventoId').value;
+        const btn = document.getElementById('btnRun');
         
-        btn.textContent = 'Processando...';
         btn.disabled = true;
+        btn.textContent = 'Processando...';
 
         fetch('/distribuir', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ id_evento: parseInt(id) })
+            body: JSON.stringify({ id_evento: Number(idInput) })
         })
         .then(r => r.json())
         .then(data => {
             alert(data.message);
             carregar();
         })
-        .catch(() => alert("Erro ao conectar com o servidor."))
+        .catch(() => alert("Erro no servidor."))
         .finally(() => {
-            btn.textContent = 'Processar para este ID';
             btn.disabled = false;
+            btn.textContent = 'Processar para este ID';
         });
     }
 
     function resetar() {
-        if(!confirm("Deseja resetar tudo para R$ 100,00?")) return;
+        if(!confirm("Resetar para R$ 100?")) return;
         fetch('/reset', {method: 'POST'}).then(r => r.json()).then(data => {
             alert(data.message);
             carregar();
         });
     }
-
     window.onload = carregar;
 </script>
 </body>
