@@ -14,7 +14,7 @@ def get_connection():
             dsn=os.environ.get("DB_DSN"),
         )
     except Exception as e:
-        print(f"Erro Conexao: {e}")
+        print(f"Erro: {e}")
         return None
 
 @app.route("/")
@@ -28,70 +28,37 @@ def listar_usuarios():
     try:
         cursor = conn.cursor()
         cursor.execute("SELECT ID, NOME, SALDO FROM USUARIOS ORDER BY ID")
-        res = [{"id": r[0], "nome": r[1], "saldo": f"{r[2]:.2f}"} for r in cursor.fetchall()]
-        return jsonify(res)
+        return jsonify([{"id": r[0], "nome": r[1], "saldo": f"{r[2]:.2f}"} for r in cursor.fetchall()])
     finally: conn.close()
 
 @app.route("/distribuir", methods=["POST"])
 def distribuir_cashback():
     data = request.get_json()
-    try:
-        id_alvo = int(data.get('id_evento'))
-    except:
-        return jsonify({"status": "erro", "message": "ID Inválido"}), 400
-
+    id_alvo = data.get('id_evento')
     conn = get_connection()
-    if not conn: return jsonify({"status": "erro", "message": "Erro de conexão"}), 500
-    
+    if not conn: return jsonify({"status": "erro", "message": "Sem conexão"}), 500
     try:
         cursor = conn.cursor()
-        
-        # 1. Busca os dados da inscrição específica
-        cursor.execute("""
-            SELECT USUARIO_ID, VALOR_PAGO, TIPO 
-            FROM INSCRICOES 
-            WHERE ID = :1 AND STATUS = 'PRESENT'
-        """, [id_alvo])
-        
+        # Busca dados da inscrição
+        cursor.execute("SELECT USUARIO_ID, VALOR_PAGO, TIPO FROM INSCRICOES WHERE ID = :1 AND STATUS = 'PRESENT'", [id_alvo])
         row = cursor.fetchone()
-        
         if not row:
-            return jsonify({"status": "erro", "message": f"ID {id_alvo} não encontrado ou não está 'PRESENT'."})
-
-        usuario_id, valor_pago, tipo = row
-
-        # 2. Conta presenças para o cálculo da taxa
-        cursor.execute("SELECT COUNT(*) FROM INSCRICOES WHERE USUARIO_ID = :1 AND STATUS = 'PRESENT'", [usuario_id])
-        presencas = cursor.fetchone()[0]
-
-        # 3. Define a taxa
-        if presencas > 3:
-            taxa = 0.25
-        elif tipo == 'VIP':
-            taxa = 0.20
-        else:
-            taxa = 0.10
-
-        valor_cashback = valor_pago * taxa
-
-        # 4. Atualiza o saldo do usuário
-        cursor.execute("UPDATE USUARIOS SET SALDO = SALDO + :1 WHERE ID = :2", [valor_cashback, usuario_id])
+            return jsonify({"status": "erro", "message": "ID não encontrado ou ausente"}), 404
         
-        # 5. Registra o Log
-        cursor.execute("""
-            INSERT INTO LOG_AUDITORIA (INSCRICAO_ID, MOTIVO, DATA) 
-            VALUES (:1, :2, SYSDATE)
-        """, [id_alvo, f"CASHBACK INDIVIDUAL {int(taxa*100)}%"])
+        u_id, valor, tipo = row
+        cursor.execute("SELECT COUNT(*) FROM INSCRICOES WHERE USUARIO_ID = :1 AND STATUS = 'PRESENT'", [u_id])
+        presencas = cursor.fetchone()[0]
+        
+        taxa = 0.25 if presencas > 3 else (0.20 if tipo == 'VIP' else 0.10)
+        ganho = valor * taxa
 
+        cursor.execute("UPDATE USUARIOS SET SALDO = SALDO + :1 WHERE ID = :2", [ganho, u_id])
+        cursor.execute("INSERT INTO LOG_AUDITORIA (INSCRICAO_ID, MOTIVO, DATA) VALUES (:1, 'CASHBACK', SYSDATE)", [id_alvo])
         conn.commit()
-        return jsonify({"status": "sucesso", "message": f"Sucesso! R$ {valor_cashback:.2f} creditados."})
-
+        return jsonify({"status": "sucesso", "message": f"Creditado R$ {ganho:.2f}!"})
     except Exception as e:
-        # Se der erro, o Python vai nos dizer exatamente o que o Oracle respondeu
-        print(f"ERRO DE BANCO: {str(e)}")
-        return jsonify({"status": "erro", "message": f"Erro no Oracle: {str(e)}"}), 500
-    finally:
-        conn.close()
+        return jsonify({"status": "erro", "message": str(e)}), 500
+    finally: conn.close()
 
 @app.route("/reset", methods=["POST"])
 def resetar_dados():
@@ -104,6 +71,3 @@ def resetar_dados():
         conn.commit()
         return jsonify({"status": "sucesso", "message": "Saldos resetados para R$ 100!"})
     finally: conn.close()
-
-if __name__ == "__main__":
-    app.run(debug=True)
