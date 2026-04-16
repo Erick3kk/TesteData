@@ -1,0 +1,71 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap');
+
+:root {
+    --primary:     #ffcc00; 
+    --secondary:   #8a2be2; 
+    --accent:      #00f2ff;
+    --bg:          #06060a;
+    --card-bg:     #0e0e16;
+    --surface:     #1a1a26;
+    --border:      #2d2d3d;
+    --text:        #f5f5f7;
+    --text-muted:  #8a8a9e;
+    --text-dim:    #4a4a5e;
+    --vip-color:   #ffcc00;
+    --font-display:'Syne', sans-serif;
+    --font-mono:   'Space Mono', monospace;
+}
+
+body {
+    background: var(--bg);
+    background-image: 
+        radial-gradient(circle at 15% 15%, rgba(138, 43, 226, 0.12) 0%, transparent 45%),
+        radial-gradient(circle at 85% 85%, rgba(255, 204, 0, 0.07) 0%, transparent 45%),
+        repeating-linear-gradient(90deg, transparent, transparent 40px, rgba(255,255,255,0.01) 40px, rgba(255,255,255,0.01) 41px);
+    color: var(--text);
+    font-family: var(--font-display);
+    padding: 50px 20px;
+    display: flex; justify-content: center;
+}
+
+.card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    width: 100%; max-width: 540px;
+    padding: 40px;
+    box-shadow: 0 40px 100px -20px rgba(0,0,0,0.9);
+}
+
+.badge {
+    background: var(--secondary);
+    color: white;
+    font-size: 10px; font-weight: 800;
+    padding: 5px 14px; border-radius: 6px;
+    font-family: var(--font-mono);
+    letter-spacing: 1px;
+}
+
+h1 span { color: var(--secondary); text-shadow: 0 0 20px rgba(138, 43, 226, 0.4); }
+
+.btn-primary {
+    background: linear-gradient(135deg, var(--secondary), #5a189a);
+    color: white; border-radius: 14px; padding: 18px;
+    font-weight: 800; border: none; cursor: pointer; width: 100%;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 8px 20px rgba(138, 43, 226, 0.2);
+}
+
+.btn-primary:hover { transform: translateY(-3px); box-shadow: 0 12px 25px rgba(138, 43, 226, 0.4); }
+
+.divider::after {
+    content: 'REGISTROS DO SISTEMA';
+    background: var(--card-bg);
+    color: var(--text-dim);
+    font-size: 9px; padding-right: 15px;
+}
+
+.tipo-vip { background: rgba(255, 204, 0, 0.1); color: var(--vip-color); border: 1px solid rgba(255, 204, 0, 0.3); padding: 3px 8px; border-radius: 4px; }
+.tipo-normal { background: rgba(138, 43, 226, 0.1); color: var(--text-muted); border: 1px solid var(--border); padding: 3px 8px; border-radius: 4px; }
+
+td { padding: 14px 0; border-bottom: 1px solid rgba(255,255,255,0.03); }
