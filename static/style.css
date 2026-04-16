@@ -6,13 +6,16 @@ body { background: var(--bg); color: white; font-family: sans-serif; display: fl
 h1 span { color: var(--primary); }
 input { width: 100%; padding: 12px; margin: 10px 0; background: #1a1a26; border: 1px solid #2d2d3d; color: white; border-radius: 8px; }
 
-/* BOTÃO ROXO */
 .btn-primary {
-    background: var(--primary) !important;
-    color: white !important;
+    background: #00ff88 !important; /* Verde neon */
+    color: #000 !important;
     border: none !important;
-    padding: 15px; width: 100%; border-radius: 10px;
-    font-weight: bold; cursor: pointer; display: block;
+    padding: 15px !important;
+    border-radius: 8px !important;
+    font-weight: bold !important;
+    width: 100% !important;
+    cursor: pointer !important;
+    display: block !important;
 }
 
 /* BOTÃO ROSA RESET */
