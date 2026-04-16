@@ -75,27 +75,38 @@ def distribuir_cashback():
     if not conn: return connection_error()
     try:
         cursor = conn.cursor()
+        # O bloco abaixo agora segue: 25% (>3 presenças), 20% (VIP), 10% (Resto)
         plsql_block = """
         DECLARE
             v_taxa NUMBER;
             v_valor_final NUMBER;
+            v_presencas NUMBER;
         BEGIN
             FOR reg IN (SELECT i.ID, i.USUARIO_ID, i.VALOR_PAGO, i.TIPO FROM INSCRICOES i WHERE i.STATUS = 'PRESENT') LOOP
-                IF reg.TIPO = 'VIP' THEN v_taxa := 0.30;
-                ELSE v_taxa := 0.15; END IF;
+                
+                SELECT COUNT(*) INTO v_presencas FROM INSCRICOES 
+                WHERE USUARIO_ID = reg.USUARIO_ID AND STATUS = 'PRESENT';
+
+                IF v_presencas > 3 THEN 
+                    v_taxa := 0.25;
+                ELSIF reg.TIPO = 'VIP' THEN 
+                    v_taxa := 0.20;
+                ELSE 
+                    v_taxa := 0.10; 
+                END IF;
 
                 v_valor_final := reg.VALOR_PAGO * v_taxa;
 
                 UPDATE USUARIOS SET SALDO = SALDO + v_valor_final WHERE ID = reg.USUARIO_ID;
 
                 INSERT INTO LOG_AUDITORIA (INSCRICAO_ID, MOTIVO, DATA)
-                VALUES (reg.ID, 'CRÉDITO APLICADO (' || (v_taxa*100) || '%) | VALOR: ' || v_valor_final, SYSDATE);
+                VALUES (reg.ID, 'CRÉDITO ECO (' || (v_taxa*100) || '%) | VALOR: R$ ' || TO_CHAR(v_valor_final, 'FM999G990D00'), SYSDATE);
             END LOOP;
             COMMIT;
         END;
         """
         cursor.execute(plsql_block)
-        return jsonify({"status": "sucesso", "message": "Processamento concluído!"})
+        return jsonify({"status": "sucesso", "message": "Créditos distribuídos com sucesso!"})
     finally:
         conn.close()
 
