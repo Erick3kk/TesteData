@@ -23,35 +23,67 @@
         <button class="btn-reset" onclick="botaoReset()">⚠ Reiniciar Ciclo (R$ 100)</button>
     </div>
 
-    <script>
-        function carregar() {
-            fetch('/usuarios').then(r => r.json()).then(data => {
-                document.getElementById('lista').innerHTML = data.map(u => 
-                    `<tr><td>#${u.id}</td><td>${u.nome}</td><td style="color:#ffcc00">R$ ${u.saldo}</td></tr>`
-                ).join('');
-            });
-        }
+    <button class="btn-primary" id="btnDistribuir" onclick="distribuir()">Processar para este ID</button>
 
-        function botaoProcessar() {
-            const id = document.getElementById('eventoId').value;
-            fetch('/distribuir', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ id_evento: parseInt(id) })
-            }).then(r => r.json()).then(data => {
-                alert(data.message);
-                carregar();
-            });
-        }
+<button class="btn-reset" id="btnReset" onclick="resetar()">⚠ Reiniciar Ciclo (R$ 100)</button>
 
-        function botaoReset() {
-            if(!confirm("Resetar?")) return;
-            fetch('/reset', {method: 'POST'}).then(r => r.json()).then(data => {
-                alert(data.message);
-                carregar();
-            });
-        }
-        window.onload = carregar;
-    </script>
+<script>
+    function carregar() {
+        fetch('/usuarios').then(r => r.json()).then(data => {
+            const tbody = document.getElementById('lista') || document.querySelector('tbody');
+            tbody.innerHTML = data.map(u => `
+                <tr>
+                    <td>#${u.id}</td>
+                    <td>${u.nome}</td>
+                    <td style="text-align:right; color:#00ff88; font-weight:bold;">R$ ${u.saldo}</td>
+                </tr>
+            `).join('');
+        });
+    }
+
+    function distribuir() {
+    // 1. Pega o valor que está escrito no campo de texto
+    const idDigitado = document.getElementById('eventoId').value;
+    const btn = document.getElementById('btnDistribuir');
+
+    if (!idDigitado) {
+        alert("Por favor, insira um ID de inscrição.");
+        return;
+    }
+
+    btn.textContent = 'A Processar...';
+    btn.disabled = true;
+
+    // 2. Envia o ID para o Python via POST
+    fetch('/distribuir', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id_evento: parseInt(idDigitado) })
+    })
+    .then(res => res.json())
+    .then(data => {
+        alert(data.message);
+        carregarUsuarios(); // Atualiza a tabela com o novo saldo
+    })
+    .catch(err => alert("Erro ao processar ID"))
+    .finally(() => {
+        btn.textContent = 'Processar para este ID';
+        btn.disabled = false;
+    });
+}
+
+    // FUNÇÃO DO BOTAO RESET
+    function resetar() {
+        if(!confirm("Deseja resetar todos os saldos para R$ 100,00?")) return;
+        fetch('/reset', { method: 'POST' })
+        .then(r => r.json())
+        .then(data => {
+            alert(data.message);
+            carregar();
+        });
+    }
+
+    window.onload = carregar;
+</script>
 </body>
 </html>
