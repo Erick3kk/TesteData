@@ -44,28 +44,36 @@
     }
 
     function distribuir() {
-        const idInput = document.getElementById('eventoId').value;
-        const btn = document.getElementById('btnRun');
-        
-        btn.disabled = true;
-        btn.textContent = 'Processando...';
+    const idInput = document.getElementById('eventoId').value;
+    const btn = document.getElementById('btnDistribuir');
+    
+    if(!idInput) return alert("Digite um ID");
 
-        fetch('/distribuir', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ id_evento: Number(idInput) })
-        })
-        .then(r => r.json())
-        .then(data => {
-            alert(data.message);
-            carregar();
-        })
-        .catch(() => alert("Erro no servidor."))
-        .finally(() => {
-            btn.disabled = false;
-            btn.textContent = 'Processar para este ID';
-        });
-    }
+    btn.disabled = true;
+    btn.textContent = 'Processando...';
+
+    fetch('/distribuir', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ id_evento: parseInt(idInput) })
+    })
+    .then(async r => {
+        const data = await r.json();
+        if (!r.ok) throw new Error(data.message || "Erro no servidor");
+        return data;
+    })
+    .then(data => {
+        alert(data.message);
+        carregarUsuarios();
+    })
+    .catch(err => {
+        alert("Erro: " + err.message);
+    })
+    .finally(() => {
+        btn.disabled = false;
+        btn.textContent = 'Processar para este ID';
+    });
+}
 
     function resetar() {
         if(!confirm("Resetar para R$ 100?")) return;
