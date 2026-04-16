@@ -49,18 +49,26 @@
             `).join('');
         });
     }
-
-    function distribuir() {
-        const id = document.getElementById('eventoId').value;
-        fetch('/distribuir', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({id_evento: id})
-        }).then(r => r.json()).then(data => {
-            alert(data.message);
-            carregar();
-        });
-    }
+function distribuir() {
+    const idDigitado = document.getElementById('eventoId').value;
+    const btn = document.getElementById('btnDistribuir');
+    
+    btn.textContent = 'Processando...';
+    
+    fetch('/distribuir', { 
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id_evento: idDigitado }) // Enviando o ID para o Python
+    })
+    .then(res => res.json())
+    .then(data => {
+        showToast(data.message, data.status === 'sucesso' ? 'success' : 'error');
+        carregarUsuarios();
+    })
+    .finally(() => {
+        btn.textContent = 'Processar para este ID';
+    });
+}
 
     function resetar() {
         if(!confirm("Deseja zerar os saldos?")) return;

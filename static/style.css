@@ -49,11 +49,33 @@ body {
 h1 span { color: var(--secondary); text-shadow: 0 0 20px rgba(138, 43, 226, 0.4); }
 
 .btn-primary {
-    background: linear-gradient(135deg, var(--secondary), #5a189a);
-    color: white; border-radius: 14px; padding: 18px;
-    font-weight: 800; border: none; cursor: pointer; width: 100%;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: 0 8px 20px rgba(138, 43, 226, 0.2);
+    background: #6a1b9a;
+    color: white;
+    border: none;
+    border-radius: 12px;
+    padding: 16px;
+    font-weight: 800;
+    box-shadow: 0 4px 15px rgba(106, 27, 154, 0.4);
+    transition: 0.3s;
+}
+
+.btn-secondary {
+    background: rgba(255, 255, 255, 0.05);
+    color: #ff4081;
+    border: 1px solid rgba(255, 64, 129, 0.3);
+    border-radius: 8px;
+    padding: 10px 20px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-secondary:hover {
+    background: rgba(255, 64, 129, 0.1);
+    border-color: #ff4081;
 }
 
 .btn-primary:hover { transform: translateY(-3px); box-shadow: 0 12px 25px rgba(138, 43, 226, 0.4); }
