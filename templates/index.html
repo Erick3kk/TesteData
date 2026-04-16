@@ -2,6 +2,7 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Eco-Awareness 2026 | Cashback</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
@@ -10,7 +11,7 @@
 <div class="card">
     <div class="header">
         <h1>Eco-Awareness <span>2026</span></h1>
-        <p class="subtitle">Gestão de Créditos Individuais</p>
+        <p class="subtitle">Gestão de Créditos e Auditoria</p>
     </div>
 
     <div class="input-group">
@@ -18,22 +19,22 @@
         <input type="number" id="eventoId" value="1">
     </div>
 
-    <button class="btn-primary" onclick="distribuir()">Processar para este ID</button>
+    <button class="btn-primary" id="btnDistribuir" onclick="distribuir()">Processar para este ID</button>
 
     <div class="divider"></div>
 
-    <table id="tabela-simples">
+    <table id="tabela-dados">
         <thead>
             <tr>
                 <th>REF</th>
-                <th>Nome</th>
-                <th style="text-align:right">Saldo</th>
+                <th>Nome do Participante</th>
+                <th style="text-align:right">Saldo Atual</th>
             </tr>
         </thead>
         <tbody id="tabela-usuarios"></tbody>
     </table>
 
-    <button class="btn-secondary" onclick="resetar()">⚠ Reiniciar Ciclo de Dados</button>
+    <button class="btn-reset" onclick="resetar()">⚠ Reiniciar Ciclo (R$ 100)</button>
 </div>
 
 <script>
@@ -43,41 +44,38 @@
             tbody.innerHTML = data.map(u => `
                 <tr>
                     <td>#${u.id}</td>
-                    <td>${u.nome}</td>
-                    <td style="text-align:right; color:var(--primary)">R$ ${u.saldo}</td>
+                    <td style="font-weight:600">${u.nome}</td>
+                    <td style="text-align:right; color:var(--primary); font-weight:bold;">R$ ${u.saldo}</td>
                 </tr>
             `).join('');
         });
     }
-function distribuir() {
-    const idDigitado = document.getElementById('eventoId').value;
-    const btn = document.getElementById('btnDistribuir');
-    
-    btn.textContent = 'Processando...';
-    
-    fetch('/distribuir', { 
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id_evento: idDigitado }) // Enviando o ID para o Python
-    })
-    .then(res => res.json())
-    .then(data => {
-        showToast(data.message, data.status === 'sucesso' ? 'success' : 'error');
-        carregarUsuarios();
-    })
-    .finally(() => {
-        btn.textContent = 'Processar para este ID';
-    });
-}
+
+    function distribuir() {
+        const id = document.getElementById('eventoId').value;
+        const btn = document.getElementById('btnDistribuir');
+        
+        btn.textContent = 'A processar...';
+        fetch('/distribuir', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({id_evento: id})
+        })
+        .then(r => r.json())
+        .then(data => {
+            alert(data.message);
+            carregar();
+        })
+        .finally(() => btn.textContent = 'Processar para este ID');
+    }
 
     function resetar() {
-        if(!confirm("Deseja zerar os saldos?")) return;
+        if(!confirm("Deseja voltar todos os saldos para R$ 100,00?")) return;
         fetch('/reset', {method: 'POST'}).then(r => r.json()).then(data => {
             alert(data.message);
             carregar();
         });
     }
-
     window.onload = carregar;
 </script>
 </body>

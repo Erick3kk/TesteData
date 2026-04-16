@@ -34,59 +34,55 @@ def listar_usuarios():
 @app.route("/distribuir", methods=["POST"])
 def distribuir_cashback():
     data = request.get_json()
-    id_evento = data.get('id_evento') # Captura o ID do campo de auditoria
-
+    id_alvo = data.get('id_evento')
+    
     conn = get_connection()
-    if not conn: return connection_error()
-
+    if not conn: return jsonify({"status": "erro"}), 500
+    
     try:
         cursor = conn.cursor()
-        # PL/SQL agora filtra especificamente pela INSCRICAO_ID informada
+        # PL/SQL filtrando APENAS o ID informado no input
         plsql_block = """
         DECLARE
-            v_percentual NUMBER;
-            v_cashback   NUMBER;
+            v_taxa NUMBER;
+            v_cashback NUMBER;
         BEGIN
             FOR reg IN (SELECT ID, USUARIO_ID, VALOR_PAGO, TIPO 
-                        FROM INSCRICOES 
-                        WHERE ID = :id_evt AND STATUS = 'PRESENT') LOOP
+                        FROM INSCRICOES WHERE ID = :id AND STATUS = 'PRESENT') LOOP
                 
-                -- Lógica de escalonamento conforme solicitado
+                -- Lógica: >3 presenças = 25%, VIP = 20%, Outros = 10%
                 IF (SELECT COUNT(*) FROM INSCRICOES WHERE USUARIO_ID = reg.USUARIO_ID AND STATUS = 'PRESENT') > 3 THEN
-                    v_percentual := 0.25;
+                    v_taxa := 0.25;
                 ELSIF reg.TIPO = 'VIP' THEN
-                    v_percentual := 0.20;
+                    v_taxa := 0.20;
                 ELSE
-                    v_percentual := 0.10;
+                    v_taxa := 0.10;
                 END IF;
 
-                v_cashback := reg.VALOR_PAGO * v_percentual;
-
+                v_cashback := reg.VALOR_PAGO * v_taxa;
                 UPDATE USUARIOS SET SALDO = SALDO + v_cashback WHERE ID = reg.USUARIO_ID;
-
+                
                 INSERT INTO LOG_AUDITORIA (INSCRICAO_ID, MOTIVO, DATA)
-                VALUES (reg.ID, 'CASHBACK INDIVIDUAL ' || (v_percentual*100) || '%', SYSDATE);
+                VALUES (reg.ID, 'CASHBACK INDIVIDUAL APLICADO', SYSDATE);
             END LOOP;
             COMMIT;
         END;
         """
-        cursor.execute(plsql_block, [id_evento])
-        return jsonify({"status": "sucesso", "message": f"Cashback aplicado para o evento #{id_evento}!"})
-    finally:
-        conn.close()
+        cursor.execute(plsql_block, [id_alvo])
+        return jsonify({"status": "sucesso", "message": f"Cashback aplicado para o ID {id_alvo}!"})
+    finally: conn.close()
 
 @app.route("/reset", methods=["POST"])
 def resetar_dados():
     conn = get_connection()
-    if not conn: return connection_error()
+    if not conn: return jsonify({"status": "erro"}), 500
     try:
         cursor = conn.cursor()
+        cursor.execute("UPDATE USUARIOS SET SALDO = 100") # Volta para 100
         cursor.execute("DELETE FROM LOG_AUDITORIA")
-        cursor.execute("UPDATE USUARIOS SET SALDO = 100") # Agora reseta para 100
         conn.commit()
-        return jsonify({"status": "sucesso", "message": "Saldos resetados para R$ 100,00!"})
-    finally:
-        conn.close()
+        return jsonify({"status": "sucesso", "message": "Saldos reiniciados para R$ 100,00!"})
+    finally: conn.close()
 
 if __name__ == "__main__":
     app.run(debug=True)
