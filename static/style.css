@@ -11,21 +11,20 @@
 body {
     background: var(--bg);
     color: var(--text);
-    font-family: sans-serif;
+    font-family: 'Segoe UI', sans-serif;
     display: flex; justify-content: center;
-    padding-top: 50px;
+    padding: 50px 20px;
 }
 
 .card {
     background: var(--card-bg);
     border: 1px solid var(--border);
-    padding: 30px;
     border-radius: 20px;
-    width: 400px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    width: 400px; padding: 30px;
+    box-shadow: 0 15px 40px rgba(0,0,0,0.6);
 }
 
-.header h1 span { color: var(--secondary); }
+.header h1 span { color: var(--secondary); text-shadow: 0 0 10px rgba(138,43,226,0.3); }
 
 input {
     width: 100%; padding: 12px; margin: 10px 0;
@@ -35,31 +34,27 @@ input {
 
 .btn-primary {
     background: var(--secondary);
-    color: white; border: none; width: 100%;
-    padding: 15px; border-radius: 10px;
-    font-weight: bold; cursor: pointer;
-    transition: opacity 0.2s;
+    color: white; border: none; padding: 16px;
+    border-radius: 10px; width: 100%; font-weight: bold;
+    cursor: pointer; transition: 0.2s;
 }
 
-.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-primary:hover { opacity: 0.9; }
 
-/* Correção visual do botão de reset */
+/* Botão de Reset Estilizado */
 .btn-reset {
-    background: transparent;
+    background: rgba(255, 64, 129, 0.05);
     color: #ff4081;
-    border: 1px solid #ff4081;
-    padding: 10px;
-    width: 100%;
-    margin-top: 20px;
-    border-radius: 8px;
-    cursor: pointer;
-    font-weight: 600;
+    border: 1px solid rgba(255, 64, 129, 0.4);
+    padding: 10px; width: 100%; margin-top: 20px;
+    border-radius: 8px; cursor: pointer; font-weight: bold;
 }
 
 .btn-reset:hover {
-    background: rgba(255, 64, 129, 0.1);
+    background: rgba(255, 64, 129, 0.15);
+    border-color: #ff4081;
 }
 
 table { width: 100%; margin-top: 20px; border-collapse: collapse; }
-td { padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 14px; }
-.divider { height: 1px; background: var(--border); margin: 20px 0; }
+td { padding: 12px 0; border-bottom: 1px solid var(--border); font-size: 14px; }
+.divider { height: 1px; background: var(--border); margin: 25px 0; }

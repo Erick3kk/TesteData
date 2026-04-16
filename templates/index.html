@@ -18,7 +18,7 @@
         <input type="number" id="eventoId" value="1">
     </div>
 
-    <button class="btn-primary" id="btnDistribuir" onclick="distribuir()">Processar para este ID</button>
+    <button class="btn-primary" id="btnProcessar" onclick="distribuir()">Processar para este ID</button>
 
     <div class="divider"></div>
 
@@ -27,7 +27,7 @@
             <tr>
                 <th>REF</th>
                 <th>Nome</th>
-                <th style="text-align:right">Saldo Atual</th>
+                <th style="text-align:right">Saldo</th>
             </tr>
         </thead>
         <tbody id="tabela-usuarios"></tbody>
@@ -51,36 +51,37 @@
     }
 
     function distribuir() {
-        const idVal = document.getElementById('eventoId').value;
-        const btn = document.getElementById('btnDistribuir');
+        const id = document.getElementById('eventoId').value;
+        const btn = document.getElementById('btnProcessar');
         
-        btn.disabled = true;
         btn.textContent = 'Processando...';
+        btn.disabled = true;
 
         fetch('/distribuir', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ id_evento: parseInt(idVal) })
+            body: JSON.stringify({ id_evento: parseInt(id) })
         })
         .then(r => r.json())
         .then(data => {
             alert(data.message);
             carregar();
         })
-        .catch(err => alert("Erro técnico no servidor."))
+        .catch(() => alert("Erro ao conectar com o servidor."))
         .finally(() => {
-            btn.disabled = false;
             btn.textContent = 'Processar para este ID';
+            btn.disabled = false;
         });
     }
 
     function resetar() {
-        if(!confirm("Resetar todos os saldos para R$ 100,00?")) return;
+        if(!confirm("Deseja resetar tudo para R$ 100,00?")) return;
         fetch('/reset', {method: 'POST'}).then(r => r.json()).then(data => {
             alert(data.message);
             carregar();
         });
     }
+
     window.onload = carregar;
 </script>
 </body>

@@ -14,7 +14,7 @@ def get_connection():
             dsn=os.environ.get("DB_DSN"),
         )
     except Exception as e:
-        print(f"Erro de Conexão: {e}")
+        print(f"Erro Conexão: {e}")
         return None
 
 @app.route("/")
@@ -28,31 +28,31 @@ def listar_usuarios():
     try:
         cursor = conn.cursor()
         cursor.execute("SELECT ID, NOME, SALDO FROM USUARIOS ORDER BY ID")
-        usuarios = [{"id": r[0], "nome": r[1], "saldo": f"{r[2]:.2f}"} for r in cursor.fetchall()]
-        return jsonify(usuarios)
+        return jsonify([{"id": r[0], "nome": r[1], "saldo": f"{r[2]:.2f}"} for r in cursor.fetchall()])
     finally: conn.close()
 
 @app.route("/distribuir", methods=["POST"])
 def distribuir_cashback():
     data = request.get_json()
-    if not data or 'id_evento' not in data:
-        return jsonify({"status": "erro", "message": "ID não enviado"}), 400
-    
     id_alvo = data.get('id_evento')
+    
     conn = get_connection()
-    if not conn: return jsonify({"status": "erro", "message": "Falha no Banco"}), 500
+    if not conn: return jsonify({"status": "erro", "message": "Sem conexão com o banco"}), 500
     
     try:
         cursor = conn.cursor()
-        # PL/SQL corrigido para processar apenas o ID do input
+        # Variável para contar quantos registros foram afetados
+        v_count = cursor.var(oracledb.NUMBER)
+        
         plsql_block = """
         DECLARE
             v_taxa NUMBER;
-            v_total NUMBER := 0;
+            v_cont NUMBER := 0;
         BEGIN
             FOR reg IN (SELECT ID, USUARIO_ID, VALOR_PAGO, TIPO 
-                        FROM INSCRICOES WHERE ID = :id AND STATUS = 'PRESENT') LOOP
+                        FROM INSCRICOES WHERE ID = :id_input AND STATUS = 'PRESENT') LOOP
                 
+                -- Lógica: >3 presenças = 25%, VIP = 20%, Resto = 10%
                 IF (SELECT COUNT(*) FROM INSCRICOES WHERE USUARIO_ID = reg.USUARIO_ID AND STATUS = 'PRESENT') > 3 THEN
                     v_taxa := 0.25;
                 ELSIF reg.TIPO = 'VIP' THEN
@@ -64,20 +64,19 @@ def distribuir_cashback():
                 UPDATE USUARIOS SET SALDO = SALDO + (reg.VALOR_PAGO * v_taxa) WHERE ID = reg.USUARIO_ID;
                 
                 INSERT INTO LOG_AUDITORIA (INSCRICAO_ID, MOTIVO, DATA)
-                VALUES (reg.ID, 'CASHBACK APLICADO ID ' || reg.ID, SYSDATE);
-                v_total := v_total + 1;
+                VALUES (reg.ID, 'CASHBACK INDIVIDUAL APLICADO', SYSDATE);
+                v_cont := v_cont + 1;
             END LOOP;
+            :v_saida := v_cont;
             COMMIT;
-            :saida := v_total;
         END;
         """
-        v_saida = cursor.var(oracledb.NUMBER)
-        cursor.execute(plsql_block, id=id_alvo, saida=v_saida)
+        cursor.execute(plsql_block, id_input=id_alvo, v_saida=v_count)
         
-        if v_saida.getvalue() == 0:
-            return jsonify({"status": "erro", "message": f"ID {id_alvo} não encontrado ou ausente."})
+        if v_count.getvalue() == 0:
+            return jsonify({"status": "erro", "message": f"Nenhum registro encontrado para o ID {id_alvo}"})
             
-        return jsonify({"status": "sucesso", "message": f"Cashback aplicado ao ID {id_alvo}!"})
+        return jsonify({"status": "sucesso", "message": f"Cashback aplicado com sucesso ao ID {id_alvo}!"})
     except Exception as e:
         return jsonify({"status": "erro", "message": str(e)}), 500
     finally: conn.close()
@@ -88,10 +87,10 @@ def resetar_dados():
     if not conn: return jsonify({"status": "erro"}), 500
     try:
         cursor = conn.cursor()
-        cursor.execute("UPDATE USUARIOS SET SALDO = 100")
+        cursor.execute("UPDATE USUARIOS SET SALDO = 100") # Reseta para 100
         cursor.execute("DELETE FROM LOG_AUDITORIA")
         conn.commit()
-        return jsonify({"status": "sucesso", "message": "Saldos resetados para R$ 100,00!"})
+        return jsonify({"status": "sucesso", "message": "Sistema resetado para R$ 100,00!"})
     finally: conn.close()
 
 if __name__ == "__main__":
