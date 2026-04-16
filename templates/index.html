@@ -1,96 +1,111 @@
 <!DOCTYPE html>
-<html>
+<html lang="pt-br">
 <head>
-    <title>Eco-Awareness 2026</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Eco-Awareness 2026 | Cashback</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
+
     <div class="card">
-        <h1>Eco-Awareness <span>2026</span></h1>
+        <span class="badge">Fidelidade & Bônus</span>
+        
+        <h1>Eco-Awareness 2026</h1>
+        <p>Programa de Cashback Progressivo para ativistas.</p>
         
         <div class="input-group">
-            <label>ID do Evento de Auditoria</label>
-            <input type="number" id="eventoId" value="1">
+            <label for="eventoId">ID DO EVENTO FINALIZADO</label>
+            <input type="number" id="eventoId" placeholder="Ex: 3" value="1">
         </div>
 
-        <button class="btn-primary" onclick="botaoProcessar()">Processar para este ID</button>
+        <button id="btnDistribuir" onclick="distribuir()">
+            Distribuir Créditos de Cashback
+        </button>
 
-        <table>
-            <thead><tr><th>REF</th><th>Nome</th><th>Saldo</th></tr></thead>
-            <tbody id="lista"></tbody>
-        </table>
+        <div class="status-container">
+            <h3>Saldos Atuais dos Participantes</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Participante</th>
+                        <th>Tipo</th>
+                        <th style="text-align: center;">Pres.</th>
+                        <th style="text-align: right;">Saldo</th>
+                    </tr>
+                </thead>
+                <tbody id="tabela-usuarios">
+                    </tbody>
+            </table>
 
-        <button class="btn-reset" onclick="botaoReset()">⚠ Reiniciar Ciclo (R$ 100)</button>
+            <button id="btnReset" onclick="resetar()" class="secondary-button">
+                Resetar Sistema
+            </button>
+        </div>
     </div>
 
-    <button class="btn-primary" id="btnDistribuir" onclick="distribuir()">Processar para este ID</button>
+    <script>
+        function carregarUsuarios() {
+            fetch('/usuarios')
+                .then(res => res.json())
+                .then(data => {
+                    const corpoTabela = document.getElementById('tabela-usuarios');
+                    corpoTabela.innerHTML = ''; 
+                    data.forEach(u => {
+                        const corTipo = u.tipo === 'VIP' ? '#ff0066' : '#666';
+                        corpoTabela.innerHTML += `
+                            <tr>
+                                <td class="td-id">#${u.id}</td>
+                                <td class="td-nome">${u.nome}</td>
+                                <td><span style="color: ${corTipo}; font-size: 10px; font-weight: bold;">${u.tipo}</span></td>
+                                <td style="text-align: center; color: #888;">${u.presencas}</td>
+                                <td class="td-saldo">R$ ${u.saldo}</td>
+                            </tr>
+                        `;
+                    });
+                });
+        }
 
-<button class="btn-reset" id="btnReset" onclick="resetar()">⚠ Reiniciar Ciclo (R$ 100)</button>
-
-<script>
-    function carregarUsuarios() {
-        fetch('/usuarios')
-            .then(r => r.json())
-            .then(data => {
-                const lista = document.getElementById('lista') || document.querySelector('tbody');
-                lista.innerHTML = data.map(u => `
-                    <tr>
-                        <td>#${u.id}</td>
-                        <td>${u.nome}</td>
-                        <td style="text-align:right; color:#00ff88; font-weight:bold;">R$ ${u.saldo}</td>
-                    </tr>
-                `).join('');
-            });
-    }
-
-    // FUNÇÃO DO BOTAO PROCESSAR
-    function distribuir() {
-        const idCampo = document.getElementById('eventoId');
-        const btn = document.getElementById('btnDistribuir');
-        const idValor = parseInt(idCampo.value);
-
-        if (isNaN(idValor)) {
-            alert("Por favor, digite um número de ID válido.");
+        function distribuir() {
+        const userId = document.getElementById('usuarioId').value;
+        if (!userId) {
+            alert("Por favor, insira um ID de usuário.");
             return;
         }
 
-        btn.disabled = true;
+        const btn = document.getElementById('btnDistribuir');
         btn.innerText = "Processando...";
+        btn.disabled = true;
 
-        fetch('/distribuir', {
+        fetch('/distribuir', { 
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id_evento: idValor })
+            body: JSON.stringify({ id: userId }) // Envia o ID no corpo
         })
-        .then(response => {
-            if (!response.ok) throw new Error("Erro no servidor");
-            return response.json();
-        })
+        .then(res => res.json())
         .then(data => {
             alert(data.message);
-            carregarUsuarios(); // Atualiza os saldos na tela
-        })
-        .catch(error => {
-            alert("Erro: O ID " + idValor + " não foi encontrado ou está ausente.");
+            carregarUsuarios();
         })
         .finally(() => {
+            btn.innerText = "Aplicar Cashback no ID";
             btn.disabled = false;
-            btn.innerText = "Processar para este ID";
         });
     }
 
-    // FUNÇÃO DO BOTAO RESET
-    function resetar() {
-        if(!confirm("Resetar todos os saldos para R$ 100?")) return;
-        fetch('/reset', { method: 'POST' })
-            .then(r => r.json())
+        function resetar() {
+            if(!confirm("Deseja resetar os saldos para R$ 100.00 e limpar logs?")) return;
+            fetch('/reset', { method: 'POST' })
+            .then(res => res.json())
             .then(data => {
                 alert(data.message);
                 carregarUsuarios();
             });
-    }
+        }
 
-    window.onload = carregar;
-</script>
+        window.onload = carregarUsuarios;
+    </script>
 </body>
 </html>

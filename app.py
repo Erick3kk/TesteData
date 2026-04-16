@@ -31,30 +31,42 @@ def listar_usuarios():
         return jsonify([{"id": r[0], "nome": r[1], "saldo": f"{r[2]:.2f}"} for r in cursor.fetchall()])
     finally: conn.close()
 
-@app.route("/distribuir", methods=["POST"])
+@app.route('/distribuir', methods=['POST'])
 def distribuir_cashback():
-    # 1. Captura o ID enviado pelo botão do frontend
     data = request.get_json()
-    id_alvo = data.get('id_evento')
+    usuario_id = data.get('id')
+
+    if not usuario_id:
+        return jsonify({"status": "erro", "message": "ID não fornecido"}), 400
 
     conn = get_connection()
-    if not conn: return connection_error()
-
+    if not conn:
+        return jsonify({"erro": "Erro de conexão com o banco"}), 500
+    
     try:
         cursor = conn.cursor()
         
-        # SQL que filtra APENAS pela inscrição (ID) que digitou no campo
+        # Agora o PL/SQL recebe o ID como parâmetro (:user_id_param)
         plsql_block = """
         DECLARE
+            CURSOR c_premiacao IS
+                SELECT i.ID as inscricao_id, u.ID as user_id, i.VALOR_PAGO, i.TIPO
+                FROM USUARIOS u
+                JOIN INSCRICOES i ON u.ID = i.USUARIO_ID
+                WHERE i.STATUS = 'PRESENT' AND u.ID = :user_id_param;
+            
+            v_total_presencas NUMBER;
             v_percentual NUMBER;
-            v_cashback   NUMBER;
+            v_cashback NUMBER;
+            v_found BOOLEAN := FALSE;
         BEGIN
-            FOR reg IN (SELECT ID, USUARIO_ID, VALOR_PAGO, TIPO 
-                        FROM INSCRICOES 
-                        WHERE ID = :id_input AND STATUS = 'PRESENT') LOOP
-                
-                -- Lógica de taxas (Ex: >3 presenças = 25%)
-                IF (SELECT COUNT(*) FROM INSCRICOES WHERE USUARIO_ID = reg.USUARIO_ID AND STATUS = 'PRESENT') > 3 THEN
+            FOR reg IN c_premiacao LOOP
+                v_found := TRUE;
+                SELECT COUNT(*) INTO v_total_presencas 
+                FROM INSCRICOES 
+                WHERE USUARIO_ID = reg.user_id AND STATUS = 'PRESENT';
+
+                IF v_total_presencas > 3 THEN
                     v_percentual := 0.25;
                 ELSIF reg.TIPO = 'VIP' THEN
                     v_percentual := 0.20;
@@ -64,18 +76,19 @@ def distribuir_cashback():
 
                 v_cashback := reg.VALOR_PAGO * v_percentual;
 
-                -- Atualiza o saldo do utilizador dono desta inscrição
-                UPDATE USUARIOS SET SALDO = SALDO + v_cashback WHERE ID = reg.USUARIO_ID;
-
-                -- Regista na auditoria
+                UPDATE USUARIOS SET SALDO = SALDO + v_cashback WHERE ID = reg.user_id;
+                
                 INSERT INTO LOG_AUDITORIA (INSCRICAO_ID, MOTIVO, DATA)
-                VALUES (reg.ID, 'CASHBACK INDIVIDUAL APLICADO', SYSDATE);
+                VALUES (reg.inscricao_id, 'CASHBACK INDIVIDUAL ' || (v_percentual*100) || '%', SYSDATE);
             END LOOP;
+            
             COMMIT;
         END;
         """
-        cursor.execute(plsql_block, [id_alvo])
-        return jsonify({"status": "sucesso", "message": f"Cashback processado para o ID {id_alvo}!"})
+        
+        cursor.execute(plsql_block, user_id_param=usuario_id)
+        return jsonify({"status": "sucesso", "message": f"Cashback processado para o ID {usuario_id}!"})
+    
     except Exception as e:
         return jsonify({"status": "erro", "message": str(e)}), 500
     finally:
