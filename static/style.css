@@ -33,21 +33,25 @@ input {
 }
 
 .btn-primary {
-    background: var(--secondary);
-    color: white; border: none; padding: 16px;
-    border-radius: 10px; width: 100%; font-weight: bold;
-    cursor: pointer; transition: 0.2s;
+    background-color: #8a2be2 !important; /* Força o roxo */
+    color: white !important;
+    border: none;
+    padding: 15px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-weight: bold;
 }
 
 .btn-primary:hover { opacity: 0.9; }
 
-/* Botão de Reset Estilizado */
 .btn-reset {
-    background: rgba(255, 64, 129, 0.05);
-    color: #ff4081;
-    border: 1px solid rgba(255, 64, 129, 0.4);
-    padding: 10px; width: 100%; margin-top: 20px;
-    border-radius: 8px; cursor: pointer; font-weight: bold;
+    background-color: transparent !important;
+    color: #ff4081 !important;
+    border: 1px solid #ff4081 !important;
+    padding: 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    margin-top: 20px;
 }
 
 .btn-reset:hover {

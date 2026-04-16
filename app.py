@@ -36,58 +36,62 @@ def listar_usuarios():
 def distribuir_cashback():
     data = request.get_json()
     try:
-        # Forçamos o ID a ser um número inteiro aqui no Python
         id_alvo = int(data.get('id_evento'))
     except:
         return jsonify({"status": "erro", "message": "ID Inválido"}), 400
 
     conn = get_connection()
-    if not conn: return jsonify({"status": "erro", "message": "Sem conexão"}), 500
+    if not conn: return jsonify({"status": "erro", "message": "Erro de conexão"}), 500
     
     try:
         cursor = conn.cursor()
         
-        # SQL puro com subquery para evitar erros de bloco PL/SQL complexo
-        # Esta query faz: 
-        # 1. Busca a inscrição pelo ID 
-        # 2. Calcula 25% se tiver >3 presenças, senão 20% se VIP, senão 10%
-        # 3. Atualiza o saldo do usuário vinculado
-        
-        sql_update = """
-        UPDATE USUARIOS u
-        SET u.SALDO = u.SALDO + (
-            SELECT i.VALOR_PAGO * (
-                CASE 
-                    WHEN (SELECT COUNT(*) FROM INSCRICOES WHERE USUARIO_ID = i.USUARIO_ID AND STATUS = 'PRESENT') > 3 THEN 0.25
-                    WHEN i.TIPO = 'VIP' THEN 0.20
-                    ELSE 0.10
-                END
-            )
-            FROM INSCRICOES i
-            WHERE i.ID = :1 AND i.STATUS = 'PRESENT' AND i.USUARIO_ID = u.ID
-        )
-        WHERE EXISTS (
-            SELECT 1 FROM INSCRICOES i 
-            WHERE i.ID = :1 AND i.STATUS = 'PRESENT' AND i.USUARIO_ID = u.ID
-        )
-        """
-        
-        cursor.execute(sql_update, [id_alvo])
-        
-        if cursor.rowcount == 0:
-            return jsonify({"status": "erro", "message": f"ID {id_alvo} não encontrado ou não está presente."})
-
-        # Registrar no Log
+        # 1. Busca os dados da inscrição específica
         cursor.execute("""
-            INSERT INTO LOG_AUDITORIA (INSCRICAO_ID, MOTIVO, DATA)
-            VALUES (:1, 'CASHBACK INDIVIDUAL PROCESSADO', SYSDATE)
+            SELECT USUARIO_ID, VALOR_PAGO, TIPO 
+            FROM INSCRICOES 
+            WHERE ID = :1 AND STATUS = 'PRESENT'
         """, [id_alvo])
         
+        row = cursor.fetchone()
+        
+        if not row:
+            return jsonify({"status": "erro", "message": f"ID {id_alvo} não encontrado ou não está 'PRESENT'."})
+
+        usuario_id, valor_pago, tipo = row
+
+        # 2. Conta presenças para o cálculo da taxa
+        cursor.execute("SELECT COUNT(*) FROM INSCRICOES WHERE USUARIO_ID = :1 AND STATUS = 'PRESENT'", [usuario_id])
+        presencas = cursor.fetchone()[0]
+
+        # 3. Define a taxa
+        if presencas > 3:
+            taxa = 0.25
+        elif tipo == 'VIP':
+            taxa = 0.20
+        else:
+            taxa = 0.10
+
+        valor_cashback = valor_pago * taxa
+
+        # 4. Atualiza o saldo do usuário
+        cursor.execute("UPDATE USUARIOS SET SALDO = SALDO + :1 WHERE ID = :2", [valor_cashback, usuario_id])
+        
+        # 5. Registra o Log
+        cursor.execute("""
+            INSERT INTO LOG_AUDITORIA (INSCRICAO_ID, MOTIVO, DATA) 
+            VALUES (:1, :2, SYSDATE)
+        """, [id_alvo, f"CASHBACK INDIVIDUAL {int(taxa*100)}%"])
+
         conn.commit()
-        return jsonify({"status": "sucesso", "message": f"Cashback aplicado ao ID {id_alvo}!"})
+        return jsonify({"status": "sucesso", "message": f"Sucesso! R$ {valor_cashback:.2f} creditados."})
+
     except Exception as e:
-        return jsonify({"status": "erro", "message": str(e)}), 500
-    finally: conn.close()
+        # Se der erro, o Python vai nos dizer exatamente o que o Oracle respondeu
+        print(f"ERRO DE BANCO: {str(e)}")
+        return jsonify({"status": "erro", "message": f"Erro no Oracle: {str(e)}"}), 500
+    finally:
+        conn.close()
 
 @app.route("/reset", methods=["POST"])
 def resetar_dados():
@@ -98,7 +102,7 @@ def resetar_dados():
         cursor.execute("UPDATE USUARIOS SET SALDO = 100")
         cursor.execute("DELETE FROM LOG_AUDITORIA")
         conn.commit()
-        return jsonify({"status": "sucesso", "message": "Saldos resetados para R$ 100,00!"})
+        return jsonify({"status": "sucesso", "message": "Saldos resetados para R$ 100!"})
     finally: conn.close()
 
 if __name__ == "__main__":
