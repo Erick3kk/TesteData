@@ -41,36 +41,30 @@
         });
     }
 
+    // FUNÇÃO DO BOTAO PROCESSAR
     function distribuir() {
-    // 1. Pega o valor que está escrito no campo de texto
-    const idDigitado = document.getElementById('eventoId').value;
-    const btn = document.getElementById('btnDistribuir');
+        const id = document.getElementById('eventoId').value;
+        const btn = document.getElementById('btnDistribuir');
+        
+        btn.disabled = true;
+        btn.innerText = "Processando...";
 
-    if (!idDigitado) {
-        alert("Por favor, insira um ID de inscrição.");
-        return;
+        fetch('/distribuir', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ id_evento: parseInt(id) })
+        })
+        .then(r => r.json())
+        .then(data => {
+            alert(data.message);
+            carregar();
+        })
+        .catch(() => alert("Erro ao conectar com o servidor"))
+        .finally(() => {
+            btn.disabled = false;
+            btn.innerText = "Processar para este ID";
+        });
     }
-
-    btn.textContent = 'A Processar...';
-    btn.disabled = true;
-
-    // 2. Envia o ID para o Python via POST
-    fetch('/distribuir', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id_evento: parseInt(idDigitado) })
-    })
-    .then(res => res.json())
-    .then(data => {
-        alert(data.message);
-        carregarUsuarios(); // Atualiza a tabela com o novo saldo
-    })
-    .catch(err => alert("Erro ao processar ID"))
-    .finally(() => {
-        btn.textContent = 'Processar para este ID';
-        btn.disabled = false;
-    });
-}
 
     // FUNÇÃO DO BOTAO RESET
     function resetar() {
