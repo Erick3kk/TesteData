@@ -14,7 +14,7 @@ def get_connection():
             dsn=os.environ.get("DB_DSN"),
         )
     except Exception as e:
-        print(f"Erro Conexão: {e}")
+        print(f"Erro de Conexão: {e}")
         return None
 
 @app.route("/")
@@ -36,14 +36,17 @@ def distribuir_cashback():
     data = request.get_json()
     id_alvo = data.get('id_evento')
     
+    if id_alvo is None:
+        return jsonify({"status": "erro", "message": "ID inválido"}), 400
+
     conn = get_connection()
-    if not conn: return jsonify({"status": "erro", "message": "Sem conexão com o banco"}), 500
+    if not conn: return jsonify({"status": "erro", "message": "Falha na conexão"}), 500
     
     try:
         cursor = conn.cursor()
-        # Variável para contar quantos registros foram afetados
         v_count = cursor.var(oracledb.NUMBER)
         
+        # PL/SQL ajustado para garantir que o ID seja tratado como NUMBER
         plsql_block = """
         DECLARE
             v_taxa NUMBER;
@@ -52,7 +55,6 @@ def distribuir_cashback():
             FOR reg IN (SELECT ID, USUARIO_ID, VALOR_PAGO, TIPO 
                         FROM INSCRICOES WHERE ID = :id_input AND STATUS = 'PRESENT') LOOP
                 
-                -- Lógica: >3 presenças = 25%, VIP = 20%, Resto = 10%
                 IF (SELECT COUNT(*) FROM INSCRICOES WHERE USUARIO_ID = reg.USUARIO_ID AND STATUS = 'PRESENT') > 3 THEN
                     v_taxa := 0.25;
                 ELSIF reg.TIPO = 'VIP' THEN
@@ -64,21 +66,21 @@ def distribuir_cashback():
                 UPDATE USUARIOS SET SALDO = SALDO + (reg.VALOR_PAGO * v_taxa) WHERE ID = reg.USUARIO_ID;
                 
                 INSERT INTO LOG_AUDITORIA (INSCRICAO_ID, MOTIVO, DATA)
-                VALUES (reg.ID, 'CASHBACK INDIVIDUAL APLICADO', SYSDATE);
+                VALUES (reg.ID, 'CASHBACK APLICADO', SYSDATE);
                 v_cont := v_cont + 1;
             END LOOP;
             :v_saida := v_cont;
             COMMIT;
         END;
         """
-        cursor.execute(plsql_block, id_input=id_alvo, v_saida=v_count)
+        cursor.execute(plsql_block, id_input=int(id_alvo), v_saida=v_count)
         
         if v_count.getvalue() == 0:
-            return jsonify({"status": "erro", "message": f"Nenhum registro encontrado para o ID {id_alvo}"})
+            return jsonify({"status": "erro", "message": f"ID {id_alvo} não encontrado no sistema."})
             
-        return jsonify({"status": "sucesso", "message": f"Cashback aplicado com sucesso ao ID {id_alvo}!"})
+        return jsonify({"status": "sucesso", "message": f"Processado! ID {id_alvo} recebeu o crédito."})
     except Exception as e:
-        return jsonify({"status": "erro", "message": str(e)}), 500
+        return jsonify({"status": "erro", "message": f"Erro no Banco: {str(e)}"}), 500
     finally: conn.close()
 
 @app.route("/reset", methods=["POST"])
@@ -87,10 +89,10 @@ def resetar_dados():
     if not conn: return jsonify({"status": "erro"}), 500
     try:
         cursor = conn.cursor()
-        cursor.execute("UPDATE USUARIOS SET SALDO = 100") # Reseta para 100
+        cursor.execute("UPDATE USUARIOS SET SALDO = 100")
         cursor.execute("DELETE FROM LOG_AUDITORIA")
         conn.commit()
-        return jsonify({"status": "sucesso", "message": "Sistema resetado para R$ 100,00!"})
+        return jsonify({"status": "sucesso", "message": "Resetado para R$ 100!"})
     finally: conn.close()
 
 if __name__ == "__main__":
