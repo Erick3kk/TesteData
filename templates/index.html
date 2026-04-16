@@ -2,104 +2,75 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Eco-Awareness 2026 | Cashback</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
 
-<div id="toast"><span class="toast-dot"></span><span id="toast-msg"></span></div>
-
 <div class="card">
     <div class="header">
-        <div class="badge-row">
-            <span class="badge">ECO CORE</span>
-            <span class="badge-outline">2026</span>
-        </div>
         <h1>Eco-Awareness <span>2026</span></h1>
-        <p class="subtitle">// Gestão Progressiva de Cashback e Fidelidade</p>
+        <p class="subtitle">Gestão de Créditos Individuais</p>
     </div>
 
     <div class="input-group">
-        <label for="eventoId">ID do Evento de Auditoria</label>
+        <label>ID do Evento de Auditoria</label>
         <input type="number" id="eventoId" value="1">
     </div>
 
-    <button class="btn-primary" id="btnDistribuir" onclick="distribuir()">
-        Processar Distribuição de Créditos
-    </button>
+    <button class="btn-primary" onclick="distribuir()">Processar para este ID</button>
 
-    <div class="divider" style="margin: 35px 0;"></div>
+    <div class="divider"></div>
 
-    <div class="tabs">
-        <button class="tab active" onclick="switchTab('participantes', this)">Beneficiários</button>
-        <button class="tab" onclick="switchTab('logs', this)">Histórico</button>
-    </div>
+    <table id="tabela-simples">
+        <thead>
+            <tr>
+                <th>REF</th>
+                <th>Nome</th>
+                <th style="text-align:right">Saldo</th>
+            </tr>
+        </thead>
+        <tbody id="tabela-usuarios"></tbody>
+    </table>
 
-    <div class="tab-panel active" id="tab-participantes">
-        <table>
-            <thead>
-                <tr>
-                    <th>REF</th>
-                    <th>Participante</th>
-                    <th>Status</th>
-                    <th style="text-align:center">Ativ.</th>
-                    <th style="text-align:right">Saldo</th>
-                </tr>
-            </thead>
-            <tbody id="tabela-usuarios"></tbody>
-        </table>
-    </div>
-
-    <div class="tab-panel" id="tab-logs">
-        <div id="lista-logs"></div>
-    </div>
-
-    <button class="btn-secondary" onclick="resetar()" style="margin-top:25px; width:100%; background:none; border:1px solid var(--border); color:var(--text-dim); padding:10px; border-radius:10px; cursor:pointer;">
-        ⚠ Reiniciar Ciclo de Dados
-    </button>
+    <button class="btn-secondary" onclick="resetar()">⚠ Reiniciar Ciclo de Dados</button>
 </div>
 
 <script>
-    function carregarUsuarios() {
-        fetch('/usuarios')
-            .then(res => res.json())
-            .then(data => {
-                const tbody = document.getElementById('tabela-usuarios');
-                tbody.innerHTML = data.map(u => `
-                    <tr>
-                        <td style="color:var(--text-dim); font-size:11px;">#${u.id}</td>
-                        <td style="font-weight:600;">${u.nome}</td>
-                        <td><span class="${u.tipo === 'VIP' ? 'tipo-vip' : 'tipo-normal'}">${u.tipo}</span></td>
-                        <td style="text-align:center;">${u.presencas}</td>
-                        <td style="text-align:right; color:var(--primary); font-weight:bold;">R$ ${u.saldo}</td>
-                    </tr>
-                `).join('');
-            });
+    function carregar() {
+        fetch('/usuarios').then(r => r.json()).then(data => {
+            const tbody = document.getElementById('tabela-usuarios');
+            tbody.innerHTML = data.map(u => `
+                <tr>
+                    <td>#${u.id}</td>
+                    <td>${u.nome}</td>
+                    <td style="text-align:right; color:var(--primary)">R$ ${u.saldo}</td>
+                </tr>
+            `).join('');
+        });
     }
 
     function distribuir() {
-        const btn = document.getElementById('btnDistribuir');
-        btn.textContent = 'Sincronizando...';
-        fetch('/distribuir', { method: 'POST' })
-            .then(res => res.json())
-            .then(data => {
-                alert(data.message);
-                carregarUsuarios();
-            })
-            .finally(() => btn.textContent = 'Processar Distribuição de Créditos');
+        const id = document.getElementById('eventoId').value;
+        fetch('/distribuir', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({id_evento: id})
+        }).then(r => r.json()).then(data => {
+            alert(data.message);
+            carregar();
+        });
     }
-    
-    window.onload = carregarUsuarios;
 
-    // Funções de aba e toast permanecem as mesmas logicamente
-    function switchTab(tab, btn) {
-        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-        document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-        btn.classList.add('active');
-        document.getElementById('tab-' + tab).classList.add('active');
-        if(tab === 'logs') carregarLogs();
+    function resetar() {
+        if(!confirm("Deseja zerar os saldos?")) return;
+        fetch('/reset', {method: 'POST'}).then(r => r.json()).then(data => {
+            alert(data.message);
+            carregar();
+        });
     }
+
+    window.onload = carregar;
 </script>
 </body>
 </html>
