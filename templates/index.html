@@ -2,7 +2,6 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Eco-Awareness 2026 | Cashback</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
@@ -11,7 +10,7 @@
 <div class="card">
     <div class="header">
         <h1>Eco-Awareness <span>2026</span></h1>
-        <p class="subtitle">Gestão de Créditos e Auditoria</p>
+        <p class="subtitle">Gestão de Créditos Individuais</p>
     </div>
 
     <div class="input-group">
@@ -23,11 +22,11 @@
 
     <div class="divider"></div>
 
-    <table id="tabela-dados">
+    <table>
         <thead>
             <tr>
                 <th>REF</th>
-                <th>Nome do Participante</th>
+                <th>Nome</th>
                 <th style="text-align:right">Saldo Atual</th>
             </tr>
         </thead>
@@ -44,7 +43,7 @@
             tbody.innerHTML = data.map(u => `
                 <tr>
                     <td>#${u.id}</td>
-                    <td style="font-weight:600">${u.nome}</td>
+                    <td>${u.nome}</td>
                     <td style="text-align:right; color:var(--primary); font-weight:bold;">R$ ${u.saldo}</td>
                 </tr>
             `).join('');
@@ -52,25 +51,31 @@
     }
 
     function distribuir() {
-        const id = document.getElementById('eventoId').value;
+        const idVal = document.getElementById('eventoId').value;
         const btn = document.getElementById('btnDistribuir');
         
-        btn.textContent = 'A processar...';
+        btn.disabled = true;
+        btn.textContent = 'Processando...';
+
         fetch('/distribuir', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({id_evento: id})
+            body: JSON.stringify({ id_evento: parseInt(idVal) })
         })
         .then(r => r.json())
         .then(data => {
             alert(data.message);
             carregar();
         })
-        .finally(() => btn.textContent = 'Processar para este ID');
+        .catch(err => alert("Erro técnico no servidor."))
+        .finally(() => {
+            btn.disabled = false;
+            btn.textContent = 'Processar para este ID';
+        });
     }
 
     function resetar() {
-        if(!confirm("Deseja voltar todos os saldos para R$ 100,00?")) return;
+        if(!confirm("Resetar todos os saldos para R$ 100,00?")) return;
         fetch('/reset', {method: 'POST'}).then(r => r.json()).then(data => {
             alert(data.message);
             carregar();

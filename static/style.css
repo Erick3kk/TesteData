@@ -6,52 +6,60 @@
     --surface:     #1a1a26;
     --border:      #2d2d3d;
     --text:        #f5f5f7;
-    --text-muted:  #8a8a9e;
 }
 
 body {
     background: var(--bg);
     color: var(--text);
-    font-family: 'Segoe UI', system-ui, sans-serif;
+    font-family: sans-serif;
     display: flex; justify-content: center;
-    padding: 40px 20px;
+    padding-top: 50px;
 }
 
 .card {
     background: var(--card-bg);
     border: 1px solid var(--border);
-    border-radius: 20px;
-    width: 100%; max-width: 500px;
     padding: 30px;
-    box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+    border-radius: 20px;
+    width: 400px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
 }
 
-.header h1 span { color: var(--secondary); text-shadow: 0 0 15px rgba(138, 43, 226, 0.4); }
-
-.input-group label { display: block; margin-bottom: 8px; font-size: 14px; color: var(--text-muted); }
+.header h1 span { color: var(--secondary); }
 
 input {
-    width: 100%; background: var(--surface); border: 1px solid var(--border);
-    color: white; padding: 12px; border-radius: 10px; margin-bottom: 20px;
+    width: 100%; padding: 12px; margin: 10px 0;
+    background: var(--surface); border: 1px solid var(--border);
+    color: white; border-radius: 8px;
 }
 
 .btn-primary {
-    background: linear-gradient(135deg, var(--secondary), #4b0082);
-    color: white; border: none; padding: 16px; border-radius: 12px;
-    font-weight: bold; width: 100%; cursor: pointer;
-    box-shadow: 0 4px 15px rgba(138, 43, 226, 0.3);
+    background: var(--secondary);
+    color: white; border: none; width: 100%;
+    padding: 15px; border-radius: 10px;
+    font-weight: bold; cursor: pointer;
+    transition: opacity 0.2s;
 }
 
+.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* Correção visual do botão de reset */
 .btn-reset {
-    background: transparent; color: #ff4081; border: 1px solid #ff4081;
-    padding: 10px; border-radius: 10px; width: 100%; margin-top: 25px;
-    cursor: pointer; font-size: 13px; transition: 0.3s;
+    background: transparent;
+    color: #ff4081;
+    border: 1px solid #ff4081;
+    padding: 10px;
+    width: 100%;
+    margin-top: 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
 }
 
-.btn-reset:hover { background: rgba(255, 64, 129, 0.1); }
+.btn-reset:hover {
+    background: rgba(255, 64, 129, 0.1);
+}
 
 table { width: 100%; margin-top: 20px; border-collapse: collapse; }
-th { text-align: left; font-size: 12px; color: var(--text-muted); padding-bottom: 10px; }
-td { padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
-
-.divider { height: 1px; background: var(--border); margin: 30px 0; }
+td { padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 14px; }
+.divider { height: 1px; background: var(--border); margin: 20px 0; }

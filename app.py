@@ -14,7 +14,7 @@ def get_connection():
             dsn=os.environ.get("DB_DSN"),
         )
     except Exception as e:
-        print(f"[ERRO] {e}")
+        print(f"Erro de Conexão: {e}")
         return None
 
 @app.route("/")
@@ -28,29 +28,31 @@ def listar_usuarios():
     try:
         cursor = conn.cursor()
         cursor.execute("SELECT ID, NOME, SALDO FROM USUARIOS ORDER BY ID")
-        return jsonify([{"id": r[0], "nome": r[1], "saldo": f"{r[2]:.2f}"} for r in cursor.fetchall()])
+        usuarios = [{"id": r[0], "nome": r[1], "saldo": f"{r[2]:.2f}"} for r in cursor.fetchall()]
+        return jsonify(usuarios)
     finally: conn.close()
 
 @app.route("/distribuir", methods=["POST"])
 def distribuir_cashback():
     data = request.get_json()
-    id_alvo = data.get('id_evento')
+    if not data or 'id_evento' not in data:
+        return jsonify({"status": "erro", "message": "ID não enviado"}), 400
     
+    id_alvo = data.get('id_evento')
     conn = get_connection()
-    if not conn: return jsonify({"status": "erro"}), 500
+    if not conn: return jsonify({"status": "erro", "message": "Falha no Banco"}), 500
     
     try:
         cursor = conn.cursor()
-        # PL/SQL filtrando APENAS o ID informado no input
+        # PL/SQL corrigido para processar apenas o ID do input
         plsql_block = """
         DECLARE
             v_taxa NUMBER;
-            v_cashback NUMBER;
+            v_total NUMBER := 0;
         BEGIN
             FOR reg IN (SELECT ID, USUARIO_ID, VALOR_PAGO, TIPO 
                         FROM INSCRICOES WHERE ID = :id AND STATUS = 'PRESENT') LOOP
                 
-                -- Lógica: >3 presenças = 25%, VIP = 20%, Outros = 10%
                 IF (SELECT COUNT(*) FROM INSCRICOES WHERE USUARIO_ID = reg.USUARIO_ID AND STATUS = 'PRESENT') > 3 THEN
                     v_taxa := 0.25;
                 ELSIF reg.TIPO = 'VIP' THEN
@@ -59,17 +61,25 @@ def distribuir_cashback():
                     v_taxa := 0.10;
                 END IF;
 
-                v_cashback := reg.VALOR_PAGO * v_taxa;
-                UPDATE USUARIOS SET SALDO = SALDO + v_cashback WHERE ID = reg.USUARIO_ID;
+                UPDATE USUARIOS SET SALDO = SALDO + (reg.VALOR_PAGO * v_taxa) WHERE ID = reg.USUARIO_ID;
                 
                 INSERT INTO LOG_AUDITORIA (INSCRICAO_ID, MOTIVO, DATA)
-                VALUES (reg.ID, 'CASHBACK INDIVIDUAL APLICADO', SYSDATE);
+                VALUES (reg.ID, 'CASHBACK APLICADO ID ' || reg.ID, SYSDATE);
+                v_total := v_total + 1;
             END LOOP;
             COMMIT;
+            :saida := v_total;
         END;
         """
-        cursor.execute(plsql_block, [id_alvo])
-        return jsonify({"status": "sucesso", "message": f"Cashback aplicado para o ID {id_alvo}!"})
+        v_saida = cursor.var(oracledb.NUMBER)
+        cursor.execute(plsql_block, id=id_alvo, saida=v_saida)
+        
+        if v_saida.getvalue() == 0:
+            return jsonify({"status": "erro", "message": f"ID {id_alvo} não encontrado ou ausente."})
+            
+        return jsonify({"status": "sucesso", "message": f"Cashback aplicado ao ID {id_alvo}!"})
+    except Exception as e:
+        return jsonify({"status": "erro", "message": str(e)}), 500
     finally: conn.close()
 
 @app.route("/reset", methods=["POST"])
@@ -78,10 +88,10 @@ def resetar_dados():
     if not conn: return jsonify({"status": "erro"}), 500
     try:
         cursor = conn.cursor()
-        cursor.execute("UPDATE USUARIOS SET SALDO = 100") # Volta para 100
+        cursor.execute("UPDATE USUARIOS SET SALDO = 100")
         cursor.execute("DELETE FROM LOG_AUDITORIA")
         conn.commit()
-        return jsonify({"status": "sucesso", "message": "Saldos reiniciados para R$ 100,00!"})
+        return jsonify({"status": "sucesso", "message": "Saldos resetados para R$ 100,00!"})
     finally: conn.close()
 
 if __name__ == "__main__":
